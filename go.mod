@@ -1,4 +1,4 @@
-module github.com/go-sql-driver/mysql
+module github.com/DaanA32/mysql
 
 go 1.21
 
