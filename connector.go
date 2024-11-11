@@ -110,12 +110,12 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 				s := fmt.Sprintf("socks5://%s:%d", mc.cfg.SocksProxyHost, mc.cfg.SocksProxyPort)
 				dial := socks.Dial(s)
 				mc.netConn, err = dial(mc.cfg.Net, mc.cfg.Addr)
-			} else if mc.cfg.SocksProxyHost == "" || mc.cfg.SocksProxyPort == 0 {
-				s := fmt.Sprintf("socks5://%s:%d", mc.cfg.SocksProxyHost, mc.cfg.SocksProxyPort)
-				err = errors.New("Invalid configuration: "+ s)
-			} else {
+			} else if mc.cfg.SocksProxyHost == "" && mc.cfg.SocksProxyPort == 0 {
 				nd := net.Dialer{Timeout: mc.cfg.Timeout}
 				mc.netConn, err = nd.DialContext(ctx, mc.cfg.Net, mc.cfg.Addr)
+			} else {
+				s := fmt.Sprintf("socks5://%s:%d", mc.cfg.SocksProxyHost, mc.cfg.SocksProxyPort)
+				err = errors.New("Invalid configuration: "+ s)
 			}
 		}
 	}
