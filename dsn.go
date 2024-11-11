@@ -74,6 +74,8 @@ type Config struct {
 	RejectReadOnly           bool // Reject read-only connections
 
 	// unexported fields. new options should be come here
+	SocksProxyHost      string // Socks proxy host
+	SocksProxyPort      int // Socks proxy port
 
 	beforeConnect func(context.Context, *Config) error // Invoked before a connection is established
 	pubKey        *rsa.PublicKey                       // Server public key
@@ -204,6 +206,14 @@ func (cfg *Config) normalize() error {
 
 	if cfg.Logger == nil {
 		cfg.Logger = defaultLogger
+	}
+
+	if cfg.SocksProxyPort > 0 {
+		cfg.SocksProxyHost = "localhost"
+	}
+
+	if cfg.SocksProxyHost != "" && cfg.SocksProxyPort == 0 {
+		cfg.SocksProxyPort = 1080
 	}
 
 	return nil
@@ -538,11 +548,11 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		// Time Location
 		case "loc":
 			if value, err = url.QueryUnescape(value); err != nil {
-				return
+				break;
 			}
 			cfg.Loc, err = time.LoadLocation(value)
 			if err != nil {
-				return
+				break;
 			}
 
 		// multiple statements in one query
@@ -572,7 +582,7 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		case "readTimeout":
 			cfg.ReadTimeout, err = time.ParseDuration(value)
 			if err != nil {
-				return
+				break
 			}
 
 		// Reject read-only connections
@@ -599,7 +609,7 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		case "timeout":
 			cfg.Timeout, err = time.ParseDuration(value)
 			if err != nil {
-				return
+				break
 			}
 
 		// TLS-Encryption
@@ -625,12 +635,12 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 		case "writeTimeout":
 			cfg.WriteTimeout, err = time.ParseDuration(value)
 			if err != nil {
-				return
+				break
 			}
 		case "maxAllowedPacket":
 			cfg.MaxAllowedPacket, err = strconv.Atoi(value)
 			if err != nil {
-				return
+				break
 			}
 
 		// Connection attributes
@@ -641,6 +651,19 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 			}
 			cfg.ConnectionAttributes = connectionAttributes
 
+		case "socksProxyHost":
+			cfg.SocksProxyHost = value
+			break
+
+		case "socksProxyPort":
+			cfg.SocksProxyPort, err = strconv.Atoi(value)
+			if err != nil {
+				if cfg.SocksProxyPort == 0 {
+					return errors.New("Invalid port value: "+value)
+				}
+			}
+			break
+
 		default:
 			// lazy init
 			if cfg.Params == nil {
@@ -648,7 +671,7 @@ func parseDSNParams(cfg *Config, params string) (err error) {
 			}
 
 			if cfg.Params[key], err = url.QueryUnescape(value); err != nil {
-				return
+				break
 			}
 		}
 	}

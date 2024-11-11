@@ -15,6 +15,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"h12.io/socks"
+	"fmt"
+	"errors"
 )
 
 type connector struct {
@@ -103,8 +106,17 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 		if ok {
 			mc.netConn, err = dial(dctx, mc.cfg.Addr)
 		} else {
-			nd := net.Dialer{}
-			mc.netConn, err = nd.DialContext(dctx, mc.cfg.Net, mc.cfg.Addr)
+			if mc.cfg.SocksProxyHost != "" && mc.cfg.SocksProxyPort > 0 {
+				s := fmt.Sprintf("socks5://%s:%d", mc.cfg.SocksProxyHost, mc.cfg.SocksProxyPort)
+				dial := socks.Dial(s)
+				mc.netConn, err = dial(mc.cfg.Net, mc.cfg.Addr)
+			} else if mc.cfg.SocksProxyHost == "" || mc.cfg.SocksProxyPort == 0 {
+				s := fmt.Sprintf("socks5://%s:%d", mc.cfg.SocksProxyHost, mc.cfg.SocksProxyPort)
+				err = errors.New("Invalid configuration: "+ s)
+			} else {
+				nd := net.Dialer{Timeout: mc.cfg.Timeout}
+				mc.netConn, err = nd.DialContext(ctx, mc.cfg.Net, mc.cfg.Addr)
+			}
 		}
 	}
 	if err != nil {
